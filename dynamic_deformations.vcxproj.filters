@@ -137,6 +137,12 @@
     <ClInclude Include="Classes\cube.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Classes\ControlledInputFloat.h">
+      <Filter>Header Files\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="Classes\ControlledInputInt.h">
+      <Filter>Header Files\assets</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\default.frag">

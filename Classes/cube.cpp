@@ -5,7 +5,10 @@ const glm::vec4 color = glm::vec4(1, 1, 1, 1);
 const float cpSize = 5.f;
 
 Cube::Cube(int division, glm::vec3 center, float length) 
-	: Figure(GenerateData(division, center, length)) {}
+	: Figure(GenerateData(division, center, length)) {
+	// work-around to avoid calling virtual function in constructor
+	controlPoints = calculateControlPoints(center, length, division);
+}
 
 void Cube::Render(int colorLoc)
 {
@@ -33,25 +36,11 @@ std::tuple<std::vector<GLfloat>, std::vector<GLuint>> Cube::GenerateData(int div
 	std::vector<GLfloat> vertices;
 	std::vector<GLuint> indices;
 
-	float step = length / division;
-
-	for (int i = 0; i < division; i++) {
-		// z loop
-		float z = start.z + i * step;
-
-		for (int j = 0; j < division; j++){
-			// y loop
-			float y = start.y + j * step;
-
-			for (int k = 0; k < division; k++) {
-				// x loop
-				float x = start.x + k * step;
-
-				vertices.push_back(x);
-				vertices.push_back(y);
-				vertices.push_back(z);
-			}
-		}
+	auto cps = calculateControlPoints(start, length, division);
+	for (auto cp : cps) {
+		vertices.push_back(cp.x);
+		vertices.push_back(cp.y);
+		vertices.push_back(cp.z);
 	}
 
 	// xy wireframe
@@ -112,4 +101,44 @@ std::tuple<std::vector<GLfloat>, std::vector<GLuint>> Cube::GenerateData(int div
 	}
 
 	return std::make_tuple(vertices, indices);
+}
+
+void Cube::SetControlPoints(std::vector<glm::vec3> cps)
+{
+	controlPoints = cps;
+
+	std::vector<GLfloat> vertices;
+	for (auto cp : controlPoints) {
+		vertices.push_back(cp.x);
+		vertices.push_back(cp.y);
+		vertices.push_back(cp.z);
+	}
+
+	RefreshVertices(vertices);
+}
+
+std::vector<glm::vec3> Cube::calculateControlPoints(glm::vec3 start, float length, int division) const
+{
+	std::vector<glm::vec3> cps;
+
+	float step = length / division;
+
+	for (int i = 0; i < division; i++) {
+		// z loop
+		float z = start.z + i * step;
+
+		for (int j = 0; j < division; j++) {
+			// y loop
+			float y = start.y + j * step;
+
+			for (int k = 0; k < division; k++) {
+				// x loop
+				float x = start.x + k * step;
+
+				cps.push_back(glm::vec3(x, y, z));
+			}
+		}
+	}
+
+	return cps;
 }

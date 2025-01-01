@@ -176,6 +176,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Classes\Camera.h" />
+    <ClInclude Include="Classes\ControlledInputFloat.h" />
+    <ClInclude Include="Classes\ControlledInputInt.h" />
     <ClInclude Include="Classes\cube.h" />
     <ClInclude Include="Classes\EBO.h" />
     <ClInclude Include="Classes\figure.h" />

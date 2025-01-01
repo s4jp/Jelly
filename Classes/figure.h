@@ -54,4 +54,11 @@ public:
 
 	  vao.Unbind();
   }
+
+  void RefreshVertices(std::vector<GLfloat> vertices) {
+	  vertices_count = vertices.size() / dimensions;
+	  vao.Bind();
+	  vbo.ReplaceBufferData(vertices.data(), vertices.size() * sizeof(GLfloat));
+	  vao.Unbind();
+  }
 };

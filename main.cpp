@@ -20,6 +20,7 @@
 #include "VBO.h"
 #include "EBO.h"
 #include "Camera.h"
+#include "ControlledInputFloat.h"
 
 #include "cube.h"
 
@@ -36,6 +37,13 @@ void window_size_callback(GLFWwindow *window, int width, int height);
 int modelLoc, viewLoc, projLoc, colorLoc;
 
 Cube* mainCube;
+bool showWiremesh = true, showCps = true;
+static ControlledInputFloat mass("Mass (per CP)", 1.f, 0.01f, 0.01f, 100.f);
+static ControlledInputFloat c1("C1", 1.f, 0.01f, 0.01f, 100.f);
+static ControlledInputFloat c2("C2", 1.f, 0.01f, 0.01f, 100.f);
+static ControlledInputFloat k("Damping [k]", 1.f, 0.01f, 0.01f, 100.f);
+bool c2off = false;
+static ControlledInputFloat disturbance("Disturbance", 10.f, 1.f, 0.f);
 
 int main() { 
     // initial values
@@ -71,7 +79,7 @@ int main() {
 
     // shaders and uniforms
     Shader shaderProgram("Shaders\\default.vert", "Shaders\\default.frag");
-    modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
+    //modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
     viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
     projLoc = glGetUniformLocation(shaderProgram.ID, "proj");
     colorLoc = glGetUniformLocation(shaderProgram.ID, "color");
@@ -111,20 +119,37 @@ int main() {
         camera->HandleInputs(window);
         camera->PrepareMatrices(view, proj);
         
-        // render non-grayscaleable objects
+        // render objects
         shaderProgram.Activate();
 
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
-        // render
 
-		mainCube->Render(colorLoc);
-		mainCube->RenderCps(colorLoc);
+        if (showWiremesh)
+		    mainCube->Render(colorLoc);
+        if (showCps)
+		    mainCube->RenderCps(colorLoc);
 
         // imgui rendering
-        if (ImGui::Begin("Menu", 0,
+        ImGui::Begin("Menu", 0,
             ImGuiWindowFlags_NoMove |
-            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {}
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+
+        ImGui::Checkbox("Show springs", &showWiremesh);
+        ImGui::Checkbox("Show control points", &showCps);
+
+            ImGui::Separator();
+        mass.Render();
+		    ImGui::Spacing();
+        c1.Render();
+		c2.Render();
+		ImGui::Checkbox("Turn off c2", &c2off);
+		    ImGui::Spacing();
+	    k.Render();
+
+		    ImGui::SeparatorText("Disturbance");
+		disturbance.Render();
+        ImGui::Button("Disturb");
 
         ImGui::End();
         #pragma region rest
