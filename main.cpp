@@ -21,6 +21,8 @@
 #include "EBO.h"
 #include "Camera.h"
 
+#include "cube.h"
+
 const float near = 0.1f;
 const float far = 100.0f;
 
@@ -32,6 +34,8 @@ glm::mat4 proj;
 void window_size_callback(GLFWwindow *window, int width, int height);
 
 int modelLoc, viewLoc, projLoc, colorLoc;
+
+Cube* mainCube;
 
 int main() { 
     // initial values
@@ -78,6 +82,8 @@ int main() {
     camera = new Camera(width, height, cameraPosition, fov, near, far, guiWidth);
     camera->PrepareMatrices(view, proj);
 
+    mainCube = new Cube();
+
     #pragma region imgui_boilerplate
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -112,6 +118,8 @@ int main() {
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
         // render
 
+		mainCube->Render(colorLoc);
+		mainCube->RenderCps(colorLoc);
 
         // imgui rendering
         if (ImGui::Begin("Menu", 0,

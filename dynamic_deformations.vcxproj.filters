@@ -78,6 +78,9 @@
     <ClCompile Include="Classes\VBO.cpp">
       <Filter>Source Files\assets</Filter>
     </ClCompile>
+    <ClCompile Include="Classes\cube.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imconfig.h">
@@ -127,6 +130,12 @@
     </ClInclude>
     <ClInclude Include="Classes\VBO.h">
       <Filter>Header Files\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="Classes\figure.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Classes\cube.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
