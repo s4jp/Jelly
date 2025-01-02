@@ -43,6 +43,21 @@ public:
     ebo.Unbind();
   }
 
+  Figure(std::tuple<std::vector<VertexStruct>, std::vector<GLuint>> data) {
+      vertices_count = std::get<0>(data).size() / dimensions;
+      indices_count = std::get<1>(data).size();
+
+      vao.Bind();
+      vbo = VBO(std::get<0>(data).data(), std::get<0>(data).size() * sizeof(VertexStruct));
+      ebo = EBO(std::get<1>(data).data(), std::get<1>(data).size() * sizeof(GLint));
+
+      vao.LinkAttrib(vbo, 0, 3, GL_FLOAT, sizeof(VertexStruct), (void*)0);
+      vao.LinkAttrib(vbo, 1, 3, GL_FLOAT, sizeof(VertexStruct), (void*)offsetof(VertexStruct, normal));
+      vao.Unbind();
+      vbo.Unbind();
+      ebo.Unbind();
+  }
+
   void RefreshBuffers(std::tuple<std::vector<GLfloat>, std::vector<GLuint>> data) {
 	  vertices_count = std::get<0>(data).size() / dimensions;
       indices_count = std::get<1>(data).size();
@@ -55,10 +70,29 @@ public:
 	  vao.Unbind();
   }
 
+  void RefreshBuffers(std::tuple<std::vector<VertexStruct>, std::vector<GLuint>> data) {
+      vertices_count = std::get<0>(data).size() / dimensions;
+      indices_count = std::get<1>(data).size();
+
+      vao.Bind();
+
+      vbo.ReplaceBufferData(std::get<0>(data).data(), std::get<0>(data).size() * sizeof(VertexStruct));
+      ebo.ReplaceBufferData(std::get<1>(data).data(), std::get<1>(data).size() * sizeof(GLint));
+
+      vao.Unbind();
+  }
+
   void RefreshVertices(std::vector<GLfloat> vertices) {
 	  vertices_count = vertices.size() / dimensions;
 	  vao.Bind();
 	  vbo.ReplaceBufferData(vertices.data(), vertices.size() * sizeof(GLfloat));
 	  vao.Unbind();
+  }
+
+  void RefreshVertices(std::vector<VertexStruct> vertices) {
+      vertices_count = vertices.size() / dimensions;
+      vao.Bind();
+      vbo.ReplaceBufferData(vertices.data(), vertices.size() * sizeof(VertexStruct));
+      vao.Unbind();
   }
 };

@@ -28,6 +28,7 @@
 #include "simulator.h"
 #include "controlCube.h"
 #include "restrainingCube.h"
+#include "model.h"
 
 const float near = 0.1f;
 const float far = 100.0f;
@@ -58,6 +59,8 @@ bool showRestrainingCube = true;
 static ControlledInputFloat mu("mu", 1.f, 0.01f, 0.f, 1.f);
 static int reflectionMode = 0;
 float lightPos[3] = { 10.f, 10.f, 10.f };
+Model* model;
+static int displayMode = 2;
 
 SymMemory* memory;
 std::vector<glm::vec3> pos;
@@ -111,6 +114,13 @@ int main() {
     int tessViewPosLoc = glGetUniformLocation(tessShaderProgram.ID, "viewPos");
 	int tessLightPosLoc = glGetUniformLocation(tessShaderProgram.ID, "lightPos");
 
+    Shader phongShader("Shaders\\phong.vert", "Shaders\\phong.frag");
+    int phongViewLoc = glGetUniformLocation(phongShader.ID, "view");
+    int phongProjLoc = glGetUniformLocation(phongShader.ID, "proj");
+    int phongColorLoc = glGetUniformLocation(phongShader.ID, "color");
+    int phongViewPosLoc = glGetUniformLocation(tessShaderProgram.ID, "viewPos");
+    int phongLightPosLoc = glGetUniformLocation(tessShaderProgram.ID, "lightPos");
+
     // callbacks
     glfwSetWindowSizeCallback(window, window_size_callback);
 
@@ -120,6 +130,7 @@ int main() {
     mainCube = new Cube();
     controlCube = new ControlCube(mainCube->GetCorners());
 	restrainingCube = new RestrainingCube();
+	model = new Model("monkey.obj");
 
     #pragma region imgui_boilerplate
     IMGUI_CHECKVERSION();
@@ -185,7 +196,17 @@ int main() {
         glUniform3fv(tessViewPosLoc, 1, glm::value_ptr(camera->Position));
 		glUniform3fv(tessLightPosLoc, 1, lightPos);
 
-		mainCube->Render(tessColorLoc);
+		if (displayMode == 1) mainCube->Render(tessColorLoc);
+
+		// render phong objects
+		phongShader.Activate();
+
+		glUniformMatrix4fv(phongViewLoc, 1, GL_FALSE, glm::value_ptr(view));
+		glUniformMatrix4fv(phongProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
+        glUniform3fv(phongViewPosLoc, 1, glm::value_ptr(camera->Position));
+		glUniform3fv(phongLightPosLoc, 1, lightPos);
+
+		if (displayMode == 2) model->Render(phongColorLoc);
 
         // imgui rendering
         ImGui::Begin("Menu", 0,
@@ -226,8 +247,18 @@ int main() {
             ImGui::SameLine();
 		if (ImGui::RadioButton("Whole vector", &reflectionMode, 1)) refreshParams();
 
-        ImGui::Separator();
-		ImGui::DragFloat3("light pos", lightPos, 0.01f);
+        ImGui::SeparatorText("Display");
+
+        ImGui::DragFloat3("light pos", lightPos, 0.01f);
+
+        ImGui::Text("Display mode:");
+        ImGui::RadioButton("None", &displayMode, 0); ImGui::SameLine();
+        ImGui::RadioButton("Patches", &displayMode, 1); ImGui::SameLine();
+        ImGui::RadioButton("Model", &displayMode, 2);
+
+        if (displayMode == 2)
+		    ImGui::DragFloat4("model color", model->color, 0.01f, 0.f, 1.f);
+
 
         ImGui::End();
         #pragma region rest
