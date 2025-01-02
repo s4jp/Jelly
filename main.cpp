@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <vector>
+#include <thread>
 
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
@@ -21,8 +22,10 @@
 #include "EBO.h"
 #include "Camera.h"
 #include "ControlledInputFloat.h"
+#include "ControlledInputInt.h"
 
 #include "cube.h"
+#include "simulator.h"
 
 const float near = 0.1f;
 const float far = 100.0f;
@@ -33,17 +36,23 @@ glm::mat4 view;
 glm::mat4 proj;
 
 void window_size_callback(GLFWwindow *window, int width, int height);
+void refreshParams();
 
 int modelLoc, viewLoc, projLoc, colorLoc;
 
 Cube* mainCube;
 bool showWiremesh = true, showCps = true;
 static ControlledInputFloat mass("Mass (per CP)", 1.f, 0.01f, 0.01f, 100.f);
-static ControlledInputFloat c1("C1", 1.f, 0.01f, 0.01f, 100.f);
-static ControlledInputFloat c2("C2", 1.f, 0.01f, 0.01f, 100.f);
-static ControlledInputFloat k("Damping [k]", 1.f, 0.01f, 0.01f, 100.f);
+static ControlledInputFloat c1("C1", 30.f, 0.01f, 0.01f, 100.f);
+static ControlledInputFloat c2("C2", 35.f, 0.01f, 0.01f, 100.f);
+static ControlledInputFloat k("Damping [k]", 5.f, 0.01f, 0.01f, 100.f);
 bool c2off = false;
-static ControlledInputFloat disturbance("Disturbance", 10.f, 1.f, 0.f);
+static ControlledInputFloat disturbance("Disturbance", 1.f, 0.01f, 0.f, 10.f);
+static ControlledInputInt dt("dt (ms)", 10, 1, 1, 1000);
+
+SymMemory* memory;
+std::vector<glm::vec3> pos;
+std::thread calcThread;
 
 int main() { 
     // initial values
@@ -102,6 +111,11 @@ int main() {
     ImGui_ImplOpenGL3_Init("#version 460");
     #pragma endregion
 
+	// simulation
+	memory = new SymMemory(dt.GetValue(), mass.GetValue(), c1.GetValue(), k.GetValue(), mainCube->GetControlPoints());
+	pos = memory->data.positions;
+	calcThread = std::thread(calculationThread, memory);
+
     while (!glfwWindowShouldClose(window)) 
     {
         #pragma region init
@@ -118,6 +132,12 @@ int main() {
 		// camera inputs handling
         camera->HandleInputs(window);
         camera->PrepareMatrices(view, proj);
+
+		// simulation
+		memory->mutex.lock();
+		pos = memory->data.positions;
+		memory->mutex.unlock();
+		mainCube->SetControlPoints(pos);
         
         // render objects
         shaderProgram.Activate();
@@ -139,17 +159,21 @@ int main() {
         ImGui::Checkbox("Show control points", &showCps);
 
             ImGui::Separator();
-        mass.Render();
+        if (mass.Render()) refreshParams();
 		    ImGui::Spacing();
-        c1.Render();
-		c2.Render();
+		if (c1.Render()) refreshParams();
+		if (c2.Render()) refreshParams();
 		ImGui::Checkbox("Turn off c2", &c2off);
 		    ImGui::Spacing();
-	    k.Render();
+	    if (k.Render()) refreshParams();
+		    ImGui::Spacing();
+        if (dt.Render()) refreshParams();
 
 		    ImGui::SeparatorText("Disturbance");
 		disturbance.Render();
-        ImGui::Button("Disturb");
+        if (ImGui::Button("Disturb")) {
+			memory->Distrupt(disturbance.GetValue());
+        }
 
         ImGui::End();
         #pragma region rest
@@ -162,10 +186,13 @@ int main() {
         #pragma endregion
     }
     #pragma region exit
+	memory->stopThread = true;
+	calcThread.join();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     shaderProgram.Delete();
+	mainCube->Delete();
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
@@ -178,4 +205,14 @@ void window_size_callback(GLFWwindow *window, int width, int height) {
   camera->SetHeight(height);
   camera->PrepareMatrices(view, proj);
   glViewport(0, 0, width - camera->guiWidth, height);
+}
+
+void refreshParams()
+{
+	memory->mutex.lock();
+	    memory->params.dt = dt.GetValue();
+	    memory->params.mass = mass.GetValue();
+	    memory->params.c1 = c1.GetValue();
+	    memory->params.k = k.GetValue();
+	memory->mutex.unlock();
 }

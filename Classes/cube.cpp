@@ -121,7 +121,7 @@ std::vector<glm::vec3> Cube::calculateControlPoints(glm::vec3 start, float lengt
 {
 	std::vector<glm::vec3> cps;
 
-	float step = length / division;
+	float step = length / (division - 1);
 
 	for (int i = 0; i < division; i++) {
 		// z loop
