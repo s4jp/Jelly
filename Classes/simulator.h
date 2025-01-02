@@ -51,6 +51,32 @@ struct SymData {
 	}
 };
 
+struct RestrainingStruct {
+	float xMin;
+	float xMax;
+	float yMin;
+	float yMax;
+	float zMin;
+	float zMax;
+
+	RestrainingStruct(std::vector<glm::vec3> restrainingCube) {
+		xMin = std::numeric_limits<float>::max();
+		xMax = std::numeric_limits<float>::min();
+		yMin = std::numeric_limits<float>::max();
+		yMax = std::numeric_limits<float>::min();
+		zMin = std::numeric_limits<float>::max();
+		zMax = std::numeric_limits<float>::min();
+		for (auto& pos : restrainingCube) {
+			if (pos.x < xMin) xMin = pos.x;
+			if (pos.x > xMax) xMax = pos.x;
+			if (pos.y < yMin) yMin = pos.y;
+			if (pos.y > yMax) yMax = pos.y;
+			if (pos.z < zMin) zMin = pos.z;
+			if (pos.z > zMax) zMax = pos.z;
+		}
+	}
+};
+
 struct SymParams {
 	
 	float dt;
@@ -59,14 +85,20 @@ struct SymParams {
 	float c2;
 	float k;
 	std::vector<glm::vec3> controlCube;
+	float mu;
+	RestrainingStruct restraints;
+	bool wholeVectorReflection;
 
-	SymParams(float dt, float mass, float c1, float c2, float k, std::vector<glm::vec3> controlCube) {
+	SymParams(float dt, float mass, float c1, float c2, float k, std::vector<glm::vec3> controlCube, float mu, std::vector<glm::vec3> restrainingCube, bool wholeVectorReflection) 
+		: restraints(restrainingCube) {
 		this->dt = dt;
 		this->mass = mass;
 		this->c1 = c1;
 		this->c2 = c2;
 		this->k = k;
 		this->controlCube = controlCube;
+		this->mu = mu;
+		this->wholeVectorReflection = wholeVectorReflection;
 	}
 };
 
@@ -78,6 +110,80 @@ glm::vec3 calculateAcceleration(glm::vec3 startPos, glm::vec3 endPos, float idea
 	return acceleration;
 }
 
+void AdjustForCollisions(glm::vec3& position, glm::vec3& velocity, float mu, float dt, RestrainingStruct restraints, bool wholeVectorReflection) {
+	glm::vec3 newPos = position + velocity * dt;
+	bool collision = false;
+
+	if (newPos.x < restraints.xMin) {
+		collision = true;
+		float t = (restraints.xMin - position.x) / velocity.x;
+		position += velocity * t;
+		velocity.x *= -mu;
+		if (wholeVectorReflection) {
+			velocity.y *= mu;
+			velocity.z *= mu;
+		}
+		AdjustForCollisions(position, velocity, mu, dt - t, restraints, wholeVectorReflection);
+	}
+	if (newPos.x > restraints.xMax) {
+		collision = true;
+		float t = (restraints.xMax - position.x) / velocity.x;
+		position += velocity * t;
+		velocity.x *= -mu;
+		if (wholeVectorReflection) {
+			velocity.y *= mu;
+			velocity.z *= mu;
+		}
+		AdjustForCollisions(position, velocity, mu, dt - t, restraints, wholeVectorReflection);
+	}
+	if (newPos.y < restraints.yMin) {
+		collision = true;
+		float t = (restraints.yMin - position.y) / velocity.y;
+		position += velocity * t;
+		velocity.y *= -mu;
+		if (wholeVectorReflection) {
+			velocity.x *= mu;
+			velocity.z *= mu;
+		}
+		AdjustForCollisions(position, velocity, mu, dt - t, restraints, wholeVectorReflection);
+	}
+	if (newPos.y > restraints.yMax) {
+		collision = true;
+		float t = (restraints.yMax - position.y) / velocity.y;
+		position += velocity * t;
+		velocity.y *= -mu;
+		if (wholeVectorReflection) {
+			velocity.x *= mu;
+			velocity.z *= mu;
+		}
+		AdjustForCollisions(position, velocity, mu, dt - t, restraints, wholeVectorReflection);
+	}
+	if (newPos.z < restraints.zMin) {
+		collision = true;
+		float t = (restraints.zMin - position.z) / velocity.z;
+		position += velocity * t;
+		velocity.z *= -mu;
+		if (wholeVectorReflection) {
+			velocity.x *= mu;
+			velocity.y *= mu;
+		}
+		AdjustForCollisions(position, velocity, mu, dt - t, restraints, wholeVectorReflection);
+	}
+	if (newPos.z > restraints.zMax) {
+		collision = true;
+		float t = (restraints.zMax - position.z) / velocity.z;
+		position += velocity * t;
+		velocity.z *= -mu;
+		if (wholeVectorReflection) {
+			velocity.x *= mu;
+			velocity.y *= mu;
+		}
+		AdjustForCollisions(position, velocity, mu, dt - t, restraints, wholeVectorReflection);
+	}
+	if (!collision)
+		position = newPos;
+}
+
 struct SymMemory {
 	SymParams params;
 	SymData data; 
@@ -87,8 +193,8 @@ struct SymMemory {
 	std::atomic<bool> stopThread;
 	std::atomic<float> sleep_debt;
 
-	SymMemory(float dt, float mass, float c1, float c2, float k, std::vector<glm::vec3> controlCube, std::vector<glm::vec3> positions)
-		: params(dt, mass, c1, c2, k, controlCube), data(positions), stopThread(false), sleep_debt(0.f) {
+	SymMemory(float dt, float mass, float c1, float c2, float k, std::vector<glm::vec3> controlCube, float mu, std::vector<glm::vec3> restrainingCube, bool wholeVectorReflection, std::vector<glm::vec3> positions)
+		: params(dt, mass, c1, c2, k, controlCube, mu, restrainingCube, wholeVectorReflection), data(positions), stopThread(false), sleep_debt(0.f) {
 		CalculateNeighbours(positions.size());
 	}
 
@@ -221,14 +327,16 @@ void calculationThread(SymMemory* memory) {
 			}
 
 			memory->data.velocities[key] += acceleration * dt;
-			memory->data.positions[key] += memory->data.velocities[key] * dt;
 		}
 
 		// springs between the cube and the control cube
 		for (const auto& [key, value] : CONTROL_CUBE_MAPPING) {
 			glm::vec3 acceleration = calculateAcceleration(positions[value], memory->params.controlCube[key], 0, memory->params.c2, memory->params.mass);
 			memory->data.velocities[value] += acceleration * dt;
-			memory->data.positions[value] += memory->data.velocities[value] * dt;
+		}
+
+		for (int i = 0; i < memory->data.positions.size(); i++) {
+			AdjustForCollisions(memory->data.positions[i], memory->data.velocities[i], memory->params.mu, dt, memory->params.restraints, memory->params.wholeVectorReflection);
 		}
 
 		memory->mutex.unlock();

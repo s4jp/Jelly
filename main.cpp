@@ -27,6 +27,7 @@
 #include "cube.h"
 #include "simulator.h"
 #include "controlCube.h"
+#include "restrainingCube.h"
 
 const float near = 0.1f;
 const float far = 100.0f;
@@ -52,6 +53,10 @@ static ControlledInputFloat disturbance("Disturbance", 1.f, 0.01f, 0.f, 10.f);
 static ControlledInputInt dt("dt (ms)", 10, 1, 1, 1000);
 ControlCube* controlCube;
 bool showControlCube = true, showLinks = true;
+RestrainingCube* restrainingCube;
+bool showRestrainingCube = true;
+static ControlledInputFloat mu("mu", 1.f, 0.01f, 0.f, 1.f);
+static int reflectionMode = 0;
 
 SymMemory* memory;
 std::vector<glm::vec3> pos;
@@ -104,6 +109,7 @@ int main() {
 
     mainCube = new Cube();
     controlCube = new ControlCube(mainCube->GetCorners());
+	restrainingCube = new RestrainingCube();
 
     #pragma region imgui_boilerplate
     IMGUI_CHECKVERSION();
@@ -116,7 +122,7 @@ int main() {
     #pragma endregion
 
 	// simulation
-	memory = new SymMemory(dt.GetValue(), mass.GetValue(), c1.GetValue(), c2.GetValue(), k.GetValue(), controlCube->CalculateControlPoints(), mainCube->GetControlPoints());
+	memory = new SymMemory(dt.GetValue(), mass.GetValue(), c1.GetValue(), c2.GetValue(), k.GetValue(), controlCube->CalculateControlPoints(), mu.GetValue(), restrainingCube->GetControlPoints(), static_cast<bool>(reflectionMode), mainCube->GetControlPoints());
 	pos = memory->data.positions;
 	calcThread = std::thread(calculationThread, memory);
 
@@ -158,6 +164,8 @@ int main() {
 			controlCube->Render(colorLoc);
         if (showLinks)
 			controlCube->RenderLinks(colorLoc);
+		if (showRestrainingCube)
+		    restrainingCube->Render(colorLoc);
 
         // imgui rendering
         ImGui::Begin("Menu", 0,
@@ -189,6 +197,14 @@ int main() {
         if (ImGui::DragFloat3("position", controlCube->transation, 0.01f)) refreshParams();
 		if (ImGui::DragFloat3("rotation", controlCube->rotation, 0.1f, -360.f, 360.f)) refreshParams();
 		// no need to update control cube, it's updated in the main loop
+
+		    ImGui::SeparatorText("Restraining cube");
+		ImGui::Checkbox("Show restraining cube", &showRestrainingCube);
+		if (mu.Render()) refreshParams();
+		ImGui::Text("Reflection mode:");
+		if (ImGui::RadioButton("One component", &reflectionMode, 0)) refreshParams();
+            ImGui::SameLine();
+		if (ImGui::RadioButton("Whole vector", &reflectionMode, 1)) refreshParams();
 
         ImGui::End();
         #pragma region rest
@@ -231,5 +247,7 @@ void refreshParams()
 		memory->params.c2 = c2off ? 0.f : c2.GetValue();
 	    memory->params.k = k.GetValue();
 		memory->params.controlCube = controlCube->CalculateControlPoints();
+		memory->params.mu = mu.GetValue();
+		memory->params.wholeVectorReflection = static_cast<bool>(reflectionMode);
 	memory->mutex.unlock();
 }
