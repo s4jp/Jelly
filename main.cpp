@@ -57,6 +57,7 @@ RestrainingCube* restrainingCube;
 bool showRestrainingCube = true;
 static ControlledInputFloat mu("mu", 1.f, 0.01f, 0.f, 1.f);
 static int reflectionMode = 0;
+float lightPos[3] = { 10.f, 10.f, 10.f };
 
 SymMemory* memory;
 std::vector<glm::vec3> pos;
@@ -100,6 +101,15 @@ int main() {
     viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
     projLoc = glGetUniformLocation(shaderProgram.ID, "proj");
     colorLoc = glGetUniformLocation(shaderProgram.ID, "color");
+
+    Shader tessShaderProgram(
+        "Shaders\\tessellation.vert", "Shaders\\phong.frag",
+        "Shaders\\tessellation.tesc", "Shaders\\tessellation.tese");
+    int tessViewLoc = glGetUniformLocation(tessShaderProgram.ID, "view");
+    int tessProjLoc = glGetUniformLocation(tessShaderProgram.ID, "proj");
+    int tessColorLoc = glGetUniformLocation(tessShaderProgram.ID, "color");
+    int tessViewPosLoc = glGetUniformLocation(tessShaderProgram.ID, "viewPos");
+	int tessLightPosLoc = glGetUniformLocation(tessShaderProgram.ID, "lightPos");
 
     // callbacks
     glfwSetWindowSizeCallback(window, window_size_callback);
@@ -157,7 +167,7 @@ int main() {
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
         if (showWiremesh)
-		    mainCube->Render(colorLoc);
+		    mainCube->RenderWireframe(colorLoc);
         if (showCps)
 		    mainCube->RenderCps(colorLoc);
 		if (showControlCube)
@@ -166,6 +176,16 @@ int main() {
 			controlCube->RenderLinks(colorLoc);
 		if (showRestrainingCube)
 		    restrainingCube->Render(colorLoc);
+
+        // render tess objects
+		tessShaderProgram.Activate();
+
+        glUniformMatrix4fv(tessViewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(tessProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
+        glUniform3fv(tessViewPosLoc, 1, glm::value_ptr(camera->Position));
+		glUniform3fv(tessLightPosLoc, 1, lightPos);
+
+		mainCube->Render(tessColorLoc);
 
         // imgui rendering
         ImGui::Begin("Menu", 0,
@@ -205,6 +225,9 @@ int main() {
 		if (ImGui::RadioButton("One component", &reflectionMode, 0)) refreshParams();
             ImGui::SameLine();
 		if (ImGui::RadioButton("Whole vector", &reflectionMode, 1)) refreshParams();
+
+        ImGui::Separator();
+		ImGui::DragFloat3("light pos", lightPos, 0.01f);
 
         ImGui::End();
         #pragma region rest

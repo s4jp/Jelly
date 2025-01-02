@@ -204,6 +204,10 @@
   <ItemGroup>
     <None Include="Shaders\default.frag" />
     <None Include="Shaders\default.vert" />
+    <None Include="Shaders\phong.frag" />
+    <None Include="Shaders\tessellation.tesc" />
+    <None Include="Shaders\tessellation.tese" />
+    <None Include="Shaders\tessellation.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -166,5 +166,17 @@
     <None Include="Shaders\default.vert">
       <Filter>Resource Files\Shaders</Filter>
     </None>
+    <None Include="Shaders\tessellation.vert">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
+    <None Include="Shaders\tessellation.tesc">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
+    <None Include="Shaders\tessellation.tese">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
+    <None Include="Shaders\phong.frag">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

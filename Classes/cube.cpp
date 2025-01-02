@@ -3,6 +3,8 @@
 
 const glm::vec4 color = glm::vec4(1, 1, 1, 1);
 const float cpSize = 5.f;
+const int BEZIER_INDICES = 16 * 6;
+const int PATCH_SIZE = 16;
 
 Cube::Cube(int division, glm::vec3 center, float length) 
 	: Figure(GenerateData(division, center, length)) {
@@ -15,7 +17,18 @@ void Cube::Render(int colorLoc)
 	vao.Bind();
 
 	glUniform4fv(colorLoc, 1, glm::value_ptr(color));
-	glDrawElements(GL_LINES, indices_count, GL_UNSIGNED_INT, 0);
+	glPatchParameteri(GL_PATCH_VERTICES, PATCH_SIZE);
+	glDrawElements(GL_PATCHES, BEZIER_INDICES, GL_UNSIGNED_INT, (void*)((indices_count - BEZIER_INDICES) * sizeof(GLuint)));
+
+	vao.Unbind();
+}
+
+void Cube::RenderWireframe(int colorLoc)
+{
+	vao.Bind();
+
+	glUniform4fv(colorLoc, 1, glm::value_ptr(color));
+	glDrawElements(GL_LINES, indices_count - BEZIER_INDICES, GL_UNSIGNED_INT, 0);
 
 	vao.Unbind();
 }
@@ -99,6 +112,24 @@ std::tuple<std::vector<GLfloat>, std::vector<GLuint>> Cube::GenerateData(int div
 			}
 		}
 	}
+
+	// bezier patches
+	std::vector<GLuint> bezierIndices = {
+		// front
+		0, 1, 2, 3,			4, 5, 6, 7,			8, 9, 10, 11,		12, 13, 14, 15,
+		// left
+		48, 32, 16, 0, 		52, 36, 20, 4,		56, 40, 24, 8,		60, 44, 28, 12,
+		// right
+		3, 19, 35, 51,		7, 23, 39, 55,		11, 27, 43, 59,		15, 31, 47, 63,
+		// back
+		51, 50, 49, 48,		55, 54, 53, 52,		59, 58, 57, 56,		63, 62, 61, 60,
+		// top
+		12, 13, 14, 15,		28, 29, 30, 31,		44, 45, 46, 47,		60, 61, 62, 63,
+		// bottom
+		48, 49, 50, 51,		32, 33, 34, 35,		16, 17, 18, 19,		0, 1, 2, 3
+	};
+
+	indices.insert(indices.end(), bezierIndices.begin(), bezierIndices.end());
 
 	return std::make_tuple(vertices, indices);
 }
