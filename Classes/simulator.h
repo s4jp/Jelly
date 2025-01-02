@@ -16,6 +16,16 @@
 
 const float DISTANCE = 1.f / 3.f;
 const float CROSS_DISTANCE = sqrt(DISTANCE * DISTANCE * 2.f);
+const std::unordered_map<int, int> CONTROL_CUBE_MAPPING = {
+	{0, 0},
+	{1, 3},
+	{2, 15},
+	{3, 12},
+	{4, 48},
+	{5, 51},
+	{6, 63},
+	{7, 60}
+};
 
 glm::vec3 drawNormalizedDirection() {
 	float theta = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 2.0f * M_PI;
@@ -46,23 +56,25 @@ struct SymParams {
 	float dt;
 	float mass;
 	float c1;
-	//float c2;
+	float c2;
 	float k;
+	std::vector<glm::vec3> controlCube;
 
-	SymParams(float dt, float mass, float c1, float k) {
+	SymParams(float dt, float mass, float c1, float c2, float k, std::vector<glm::vec3> controlCube) {
 		this->dt = dt;
 		this->mass = mass;
 		this->c1 = c1;
-		//this->c2 = c2;
+		this->c2 = c2;
 		this->k = k;
+		this->controlCube = controlCube;
 	}
 };
 
-glm::vec3 calculateAcceleration(std::vector<glm::vec3> pos, int start, int end, float idealDist, SymParams params) {
-	float dist = glm::distance(pos[start], pos[end]);
+glm::vec3 calculateAcceleration(glm::vec3 startPos, glm::vec3 endPos, float idealDist, float c, float mass) {
+	float dist = glm::distance(startPos, endPos);
 	float l = dist - idealDist;
-	float force = -params.c1 * l;
-	glm::vec3 acceleration = force * - glm::normalize(pos[end] - pos[start]) / params.mass;
+	float force = -c * l;
+	glm::vec3 acceleration = force * - (dist == 0 ? glm::vec3(0.f) : glm::normalize(endPos - startPos)) / mass;
 	return acceleration;
 }
 
@@ -75,8 +87,8 @@ struct SymMemory {
 	std::atomic<bool> stopThread;
 	std::atomic<float> sleep_debt;
 
-	SymMemory(float dt, float mass, float c1, float k, std::vector<glm::vec3> positions) 
-		: params(dt, mass, c1, k), data(positions), stopThread(false), sleep_debt(0.f) {
+	SymMemory(float dt, float mass, float c1, float c2, float k, std::vector<glm::vec3> controlCube, std::vector<glm::vec3> positions)
+		: params(dt, mass, c1, c2, k, controlCube), data(positions), stopThread(false), sleep_debt(0.f) {
 		CalculateNeighbours(positions.size());
 	}
 
@@ -200,15 +212,23 @@ void calculationThread(SymMemory* memory) {
 		// create copy of positions
 		std::vector<glm::vec3> positions = memory->data.positions;
 
+		// springs within the cube
 		for (const auto& [key, value] : memory->neighbours) {
 			glm::vec3 acceleration(-memory->params.k * memory->data.velocities[key] / memory->params.mass);
 
 			for (const auto& val : value) {
-				acceleration += calculateAcceleration(positions, key, std::get<0>(val), std::get<1>(val), memory->params);
+				acceleration += calculateAcceleration(positions[key], positions[std::get<0>(val)], std::get<1>(val), memory->params.c1, memory->params.mass);
 			}
 
 			memory->data.velocities[key] += acceleration * dt;
 			memory->data.positions[key] += memory->data.velocities[key] * dt;
+		}
+
+		// springs between the cube and the control cube
+		for (const auto& [key, value] : CONTROL_CUBE_MAPPING) {
+			glm::vec3 acceleration = calculateAcceleration(positions[value], memory->params.controlCube[key], 0, memory->params.c2, memory->params.mass);
+			memory->data.velocities[value] += acceleration * dt;
+			memory->data.positions[value] += memory->data.velocities[value] * dt;
 		}
 
 		memory->mutex.unlock();

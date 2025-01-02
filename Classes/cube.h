@@ -12,6 +12,7 @@ public:
 
 	std::vector<glm::vec3> GetControlPoints() { return controlPoints; }
 	void SetControlPoints(std::vector<glm::vec3> cps);
+	std::vector<glm::vec3> GetCorners();
 
 private:
 	std::vector<glm::vec3> controlPoints;

@@ -26,6 +26,7 @@
 
 #include "cube.h"
 #include "simulator.h"
+#include "controlCube.h"
 
 const float near = 0.1f;
 const float far = 100.0f;
@@ -49,6 +50,8 @@ static ControlledInputFloat k("Damping [k]", 5.f, 0.01f, 0.01f, 100.f);
 bool c2off = false;
 static ControlledInputFloat disturbance("Disturbance", 1.f, 0.01f, 0.f, 10.f);
 static ControlledInputInt dt("dt (ms)", 10, 1, 1, 1000);
+ControlCube* controlCube;
+bool showControlCube = true, showLinks = true;
 
 SymMemory* memory;
 std::vector<glm::vec3> pos;
@@ -100,6 +103,7 @@ int main() {
     camera->PrepareMatrices(view, proj);
 
     mainCube = new Cube();
+    controlCube = new ControlCube(mainCube->GetCorners());
 
     #pragma region imgui_boilerplate
     IMGUI_CHECKVERSION();
@@ -112,7 +116,7 @@ int main() {
     #pragma endregion
 
 	// simulation
-	memory = new SymMemory(dt.GetValue(), mass.GetValue(), c1.GetValue(), k.GetValue(), mainCube->GetControlPoints());
+	memory = new SymMemory(dt.GetValue(), mass.GetValue(), c1.GetValue(), c2.GetValue(), k.GetValue(), controlCube->CalculateControlPoints(), mainCube->GetControlPoints());
 	pos = memory->data.positions;
 	calcThread = std::thread(calculationThread, memory);
 
@@ -138,6 +142,7 @@ int main() {
 		pos = memory->data.positions;
 		memory->mutex.unlock();
 		mainCube->SetControlPoints(pos);
+		controlCube->UpdateControlPoints(mainCube->GetCorners());
         
         // render objects
         shaderProgram.Activate();
@@ -149,6 +154,10 @@ int main() {
 		    mainCube->Render(colorLoc);
         if (showCps)
 		    mainCube->RenderCps(colorLoc);
+		if (showControlCube)
+			controlCube->Render(colorLoc);
+        if (showLinks)
+			controlCube->RenderLinks(colorLoc);
 
         // imgui rendering
         ImGui::Begin("Menu", 0,
@@ -163,7 +172,7 @@ int main() {
 		    ImGui::Spacing();
 		if (c1.Render()) refreshParams();
 		if (c2.Render()) refreshParams();
-		ImGui::Checkbox("Turn off c2", &c2off);
+		if (ImGui::Checkbox("Turn off c2", &c2off)) refreshParams();
 		    ImGui::Spacing();
 	    if (k.Render()) refreshParams();
 		    ImGui::Spacing();
@@ -171,9 +180,15 @@ int main() {
 
 		    ImGui::SeparatorText("Disturbance");
 		disturbance.Render();
-        if (ImGui::Button("Disturb")) {
-			memory->Distrupt(disturbance.GetValue());
-        }
+        if (ImGui::Button("Disturb")) memory->Distrupt(disturbance.GetValue());
+
+		    ImGui::SeparatorText("Control cube");
+		ImGui::Checkbox("Show control cube", &showControlCube);
+		ImGui::Checkbox("Show links", &showLinks);
+
+        if (ImGui::DragFloat3("position", controlCube->transation, 0.01f)) refreshParams();
+		if (ImGui::DragFloat3("rotation", controlCube->rotation, 0.1f, -360.f, 360.f)) refreshParams();
+		// no need to update control cube, it's updated in the main loop
 
         ImGui::End();
         #pragma region rest
@@ -213,6 +228,8 @@ void refreshParams()
 	    memory->params.dt = dt.GetValue();
 	    memory->params.mass = mass.GetValue();
 	    memory->params.c1 = c1.GetValue();
+		memory->params.c2 = c2off ? 0.f : c2.GetValue();
 	    memory->params.k = k.GetValue();
+		memory->params.controlCube = controlCube->CalculateControlPoints();
 	memory->mutex.unlock();
 }

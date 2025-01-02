@@ -117,6 +117,20 @@ void Cube::SetControlPoints(std::vector<glm::vec3> cps)
 	RefreshVertices(vertices);
 }
 
+std::vector<glm::vec3> Cube::GetCorners()
+{
+	std::vector<glm::vec3> corners;
+	corners.push_back(controlPoints[0]);
+	corners.push_back(controlPoints[3]);
+	corners.push_back(controlPoints[15]);
+	corners.push_back(controlPoints[12]);
+	corners.push_back(controlPoints[48]);
+	corners.push_back(controlPoints[51]);
+	corners.push_back(controlPoints[63]);
+	corners.push_back(controlPoints[60]);
+	return corners;
+}
+
 std::vector<glm::vec3> Cube::calculateControlPoints(glm::vec3 start, float length, int division) const
 {
 	std::vector<glm::vec3> cps;

@@ -81,6 +81,9 @@
     <ClCompile Include="Classes\cube.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Classes\controlCube.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imconfig.h">
@@ -144,6 +147,9 @@
       <Filter>Header Files\assets</Filter>
     </ClInclude>
     <ClInclude Include="Classes\simulator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Classes\controlCube.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
