@@ -123,6 +123,7 @@ int main() {
     int phongLightPosLoc = glGetUniformLocation(tessShaderProgram.ID, "lightPos");
 	int phongControlPointsLoc = glGetUniformLocation(phongShader.ID, "controlPoints");
     int phongInterpolateNormalsLoc = glGetUniformLocation(phongShader.ID, "interpolateNormals");
+	int phongMinMaxLoc = glGetUniformLocation(phongShader.ID, "minMaxValues");
 
     // callbacks
     glfwSetWindowSizeCallback(window, window_size_callback);
@@ -211,6 +212,7 @@ int main() {
 		std::vector<glm::vec3> controlPoints = mainCube->GetControlPoints();
 		glUniform3fv(phongControlPointsLoc, 64, &controlPoints[0].x);
 		glUniform1i(phongInterpolateNormalsLoc, interpolateNormals);
+		glUniform1fv(phongMinMaxLoc, 6, &model->minMaxValues[0]);
 
 		if (displayMode == 2) model->Render(phongColorLoc);
 
