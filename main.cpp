@@ -61,6 +61,7 @@ static int reflectionMode = 0;
 float lightPos[3] = { 10.f, 10.f, 10.f };
 Model* model;
 static int displayMode = 2;
+bool interpolateNormals = false;
 
 SymMemory* memory;
 std::vector<glm::vec3> pos;
@@ -120,6 +121,8 @@ int main() {
     int phongColorLoc = glGetUniformLocation(phongShader.ID, "color");
     int phongViewPosLoc = glGetUniformLocation(tessShaderProgram.ID, "viewPos");
     int phongLightPosLoc = glGetUniformLocation(tessShaderProgram.ID, "lightPos");
+	int phongControlPointsLoc = glGetUniformLocation(phongShader.ID, "controlPoints");
+    int phongInterpolateNormalsLoc = glGetUniformLocation(phongShader.ID, "interpolateNormals");
 
     // callbacks
     glfwSetWindowSizeCallback(window, window_size_callback);
@@ -205,6 +208,9 @@ int main() {
 		glUniformMatrix4fv(phongProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
         glUniform3fv(phongViewPosLoc, 1, glm::value_ptr(camera->Position));
 		glUniform3fv(phongLightPosLoc, 1, lightPos);
+		std::vector<glm::vec3> controlPoints = mainCube->GetControlPoints();
+		glUniform3fv(phongControlPointsLoc, 64, &controlPoints[0].x);
+		glUniform1i(phongInterpolateNormalsLoc, interpolateNormals);
 
 		if (displayMode == 2) model->Render(phongColorLoc);
 
@@ -256,9 +262,11 @@ int main() {
         ImGui::RadioButton("Patches", &displayMode, 1); ImGui::SameLine();
         ImGui::RadioButton("Model", &displayMode, 2);
 
-        if (displayMode == 2)
-		    ImGui::DragFloat4("model color", model->color, 0.01f, 0.f, 1.f);
-
+        ImGui::Spacing();
+        if (displayMode == 2) {
+            ImGui::DragFloat4("model color", model->color, 0.01f, 0.f, 1.f);
+            ImGui::Checkbox("Interpolate normals", &interpolateNormals);
+        }
 
         ImGui::End();
         #pragma region rest
