@@ -62,6 +62,7 @@ float lightPos[3] = { 10.f, 10.f, 10.f };
 Model* model;
 static int displayMode = 2;
 bool interpolateNormals = false;
+float gravity = 0.f;
 
 SymMemory* memory;
 std::vector<glm::vec3> pos;
@@ -147,7 +148,7 @@ int main() {
     #pragma endregion
 
 	// simulation
-	memory = new SymMemory(dt.GetValue(), mass.GetValue(), c1.GetValue(), c2.GetValue(), k.GetValue(), controlCube->CalculateControlPoints(), mu.GetValue(), restrainingCube->GetControlPoints(), static_cast<bool>(reflectionMode), mainCube->GetControlPoints());
+	memory = new SymMemory(dt.GetValue(), mass.GetValue(), c1.GetValue(), c2.GetValue(), k.GetValue(), controlCube->CalculateControlPoints(), mu.GetValue(), restrainingCube->GetControlPoints(), static_cast<bool>(reflectionMode), gravity, mainCube->GetControlPoints());
 	pos = memory->data.positions;
 	calcThread = std::thread(calculationThread, memory);
 
@@ -238,6 +239,13 @@ int main() {
 		    ImGui::SeparatorText("Disturbance");
 		disturbance.Render();
         if (ImGui::Button("Disturb")) memory->Distrupt(disturbance.GetValue());
+        
+		    ImGui::SeparatorText("Gravity");
+		if (ImGui::SliderFloat("Gravity", &gravity, -1.f, 1.f)) refreshParams();
+        if (ImGui::Button("Zero graftity")) {
+			gravity = 0.f;
+			refreshParams();
+        }
 
 		    ImGui::SeparatorText("Control cube");
 		ImGui::Checkbox("Show control cube", &showControlCube);
@@ -317,5 +325,6 @@ void refreshParams()
 		memory->params.controlCube = controlCube->CalculateControlPoints();
 		memory->params.mu = mu.GetValue();
 		memory->params.wholeVectorReflection = static_cast<bool>(reflectionMode);
+		memory->params.gravity = gravity;
 	memory->mutex.unlock();
 }

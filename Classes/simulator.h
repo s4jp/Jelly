@@ -16,6 +16,7 @@
 
 const float DISTANCE = 1.f / 3.f;
 const float CROSS_DISTANCE = sqrt(DISTANCE * DISTANCE * 2.f);
+const float G = 9.81f;
 const std::unordered_map<int, int> CONTROL_CUBE_MAPPING = {
 	{0, 0},
 	{1, 3},
@@ -88,8 +89,9 @@ struct SymParams {
 	float mu;
 	RestrainingStruct restraints;
 	bool wholeVectorReflection;
+	float gravity;
 
-	SymParams(float dt, float mass, float c1, float c2, float k, std::vector<glm::vec3> controlCube, float mu, std::vector<glm::vec3> restrainingCube, bool wholeVectorReflection) 
+	SymParams(float dt, float mass, float c1, float c2, float k, std::vector<glm::vec3> controlCube, float mu, std::vector<glm::vec3> restrainingCube, bool wholeVectorReflection, float gravity) 
 		: restraints(restrainingCube) {
 		this->dt = dt;
 		this->mass = mass;
@@ -99,6 +101,7 @@ struct SymParams {
 		this->controlCube = controlCube;
 		this->mu = mu;
 		this->wholeVectorReflection = wholeVectorReflection;
+		this->gravity = gravity;
 	}
 };
 
@@ -193,8 +196,8 @@ struct SymMemory {
 	std::atomic<bool> stopThread;
 	std::atomic<float> sleep_debt;
 
-	SymMemory(float dt, float mass, float c1, float c2, float k, std::vector<glm::vec3> controlCube, float mu, std::vector<glm::vec3> restrainingCube, bool wholeVectorReflection, std::vector<glm::vec3> positions)
-		: params(dt, mass, c1, c2, k, controlCube, mu, restrainingCube, wholeVectorReflection), data(positions), stopThread(false), sleep_debt(0.f) {
+	SymMemory(float dt, float mass, float c1, float c2, float k, std::vector<glm::vec3> controlCube, float mu, std::vector<glm::vec3> restrainingCube, bool wholeVectorReflection, float gravity, std::vector<glm::vec3> positions)
+		: params(dt, mass, c1, c2, k, controlCube, mu, restrainingCube, wholeVectorReflection, gravity), data(positions), stopThread(false), sleep_debt(0.f) {
 		CalculateNeighbours(positions.size());
 	}
 
@@ -333,6 +336,12 @@ void calculationThread(SymMemory* memory) {
 		for (const auto& [key, value] : CONTROL_CUBE_MAPPING) {
 			glm::vec3 acceleration = calculateAcceleration(positions[value], memory->params.controlCube[key], 0, memory->params.c2, memory->params.mass);
 			memory->data.velocities[value] += acceleration * dt;
+		}
+
+		// gravity
+		for (auto& velocity : memory->data.velocities) {
+			float acceleration = -G / memory->params.mass * memory->params.gravity;
+			velocity.y += acceleration * dt;
 		}
 
 		for (int i = 0; i < memory->data.positions.size(); i++) {
