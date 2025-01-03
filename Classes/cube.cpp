@@ -16,7 +16,7 @@ void Cube::Render(int colorLoc)
 {
 	vao.Bind();
 
-	glUniform4fv(colorLoc, 1, glm::value_ptr(color));
+	glUniform4fv(colorLoc, 1, bezierColor);
 	glPatchParameteri(GL_PATCH_VERTICES, PATCH_SIZE);
 	glDrawElements(GL_PATCHES, BEZIER_INDICES, GL_UNSIGNED_INT, (void*)((indices_count - BEZIER_INDICES) * sizeof(GLuint)));
 

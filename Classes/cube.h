@@ -15,6 +15,8 @@ public:
 	void SetControlPoints(std::vector<glm::vec3> cps);
 	std::vector<glm::vec3> GetCorners();
 
+	float bezierColor[4] = { 1, 1, 0, 1 };
+
 private:
 	std::vector<glm::vec3> controlPoints;
 

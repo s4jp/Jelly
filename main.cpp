@@ -257,18 +257,22 @@ int main() {
 
         ImGui::SeparatorText("Display");
 
-        ImGui::DragFloat3("light pos", lightPos, 0.01f);
+        //ImGui::DragFloat3("light pos", lightPos, 0.01f);
 
-        ImGui::Text("Display mode:");
+        //ImGui::Text("Display mode:");
         ImGui::RadioButton("None", &displayMode, 0); ImGui::SameLine();
         ImGui::RadioButton("Patches", &displayMode, 1); ImGui::SameLine();
         ImGui::RadioButton("Model", &displayMode, 2);
 
         ImGui::Spacing();
-        if (displayMode == 2) {
-            ImGui::DragFloat4("model color", model->color, 0.01f, 0.f, 1.f);
+        if (displayMode != 0)
+            if (ImGui::DragFloat3("model color", model->color, 0.01f, 0.f, 1.f)) {
+				mainCube->bezierColor[0] = model->color[0];
+				mainCube->bezierColor[1] = model->color[1];
+				mainCube->bezierColor[2] = model->color[2];
+            }
+        if (displayMode == 2)  
             ImGui::Checkbox("Interpolate normals", &interpolateNormals);
-        }
 
         ImGui::End();
         #pragma region rest
